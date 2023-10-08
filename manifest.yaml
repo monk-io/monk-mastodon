@@ -1,0 +1,428 @@
+---
+namespace: mastodon
+
+common:
+  metadata:
+    publisher: monk.io
+    tags: mastodon, socialnetwork, twitter, x, networking, community
+    icon: https://joinmastodon.org/_next/static/media/wordmark-white-text.01e9f493.svg
+    description: Social networking that's not for sale.
+    name: Mastodon
+    website: https://joinmastodon.org/
+    source: https://github.com/mastodon/mastodon
+    private: true
+
+web:
+  defines: runnable
+  inherits: mastodon/common
+  containers:
+    web:
+      image: docker.io/bitnami/mastodon
+      image-tag: <- $IMAGE_TAG
+      paths:
+        - <- `${monk-volume-path}/mastodon/mastodon:/bitnami/mastodon`
+  services:
+    server:
+      container: web
+      port: 3000
+      protocol: tcp
+      host-port: 80
+  connections:
+    redis:
+      runnable: mastodon/redis
+      service: redis-svc
+    postgres:
+      runnable: mastodon/postgres
+      service: postgres
+  depends:
+    wait-for:
+      runnables:
+        - mastodon/postgres
+        - mastodon/redis
+  files:
+    check:
+      contents: |
+        #!/bin/bash
+        /usr/bin/curl localhost:3000 2>/dev/null | grep -o Mastodon
+        if [[ $? -eq 0 ]]; then
+          echo ok
+        else
+          echo fail
+        fi
+      mode: 0755
+      path: /opt/bitnami/scripts/ready.sh
+      container: web
+  checks:
+    readiness:
+      code: exec("web", "/bin/bash", "-c", "/opt/bitnami/scripts/ready.sh") contains?("ok")
+      period: 5
+      initialDelay: 15
+  variables:
+    IMAGE_TAG:
+      type: string
+      value: <- $image-tag default("4")
+    ALLOW_EMPTY_PASSWORD:
+      type: string
+      value: 'yes'
+      env: ALLOW_EMPTY_PASSWORD
+    MASTODON_MODE:
+      type: string
+      value: web
+      env: MASTODON_MODE
+    REDIS_HOST:
+      type: string
+      value: <- connection-hostname("redis")
+      env: REDIS_HOST
+    DB_HOST:
+      type: string
+      value: <- connection-hostname("postgres")
+      env: MASTODON_DATABASE_HOST
+    DB_USER:
+      type: string
+      value: <- $db-user default("mastodon")
+      env: MASTODON_DATABASE_USERNAME
+    DB_PASS:
+      type: string
+      value: <- $db-pass default("mastodon")
+      env: MASTODON_DATABASE_PASSWORD
+    DB_NAME:
+      type: string
+      value: <- $db-name default("mastodon")
+      env: MASTODON_DATABASE_NAME
+    BITNAMI_DEBUG:
+      type: string
+      value: 'true'
+      env: BITNAMI_DEBUG
+    MASTODON_ELASTICSEARCH_ENABLED:
+      type: string
+      value: 'false'
+      env: MASTODON_ELASTICSEARCH_ENABLED
+    WEB_DOMAIN:
+      type: string
+      value: <- $web-domain default("mastodon.monk.io")
+      env: WEB_DOMAIN
+    LOCAL_DOMAIN:
+      type: string
+      value: <- $local-domain default("mastodon.monk.io")
+      env: LOCAL_DOMAIN
+    MASTODON_ADMIN_USERNAME:
+      type: string
+      value: <- $admin-username default("monk")
+      env: LOCAL_DOMAIN
+    MASTODON_ADMIN_PASSWORD:
+      type: string
+      value: <- $admin-password default("monkmonk")
+      env: MASTODON_ADMIN_PASSWORD
+    MASTODON_ADMIN_EMAIL:
+      type: string
+      value: <- $admin-email default("monk@monk.io")
+      env: MASTODON_ADMIN_EMAIL
+    SMTP_SERVER:
+      type: string
+      value: <- $smtp-server default("")
+      env: SMTP_SERVER
+    SMTP_PORT:
+      type: string
+      value: <- $smtp-port default("")
+      env: SMTP_PORT
+    SMTP_LOGIN:
+      type: string
+      value: <- $smtp-login default("")
+      env: SMTP_LOGIN
+    SMTP_PASSWORD:
+      type: string
+      value: <- $smtp-password default("")
+      env: SMTP_PASSWORD
+    SMTP_FROM_ADDRESS:
+      type: string
+      value: <- $smtp-from-address default("")
+      env: SMTP_FROM_ADDRESS
+    SMTP_DOMAIN:
+      type: string
+      value: <- $smtp-domain default("")
+      env: SMTP_DOMAIN
+    SMTP_DELIVERY_METHOD:
+      type: string
+      value: <- $smtp-delivery-method default("")
+      env: SMTP_DELIVERY_METHOD
+    SMTP_AUTH_METHOD:
+      type: string
+      value: <- $smtp-auth-method default("")
+      env: SMTP_AUTH_METHOD
+    SMTP_OPENSSL_VERIFY_MODE:
+      type: string
+      value: <- $smtp-openssl-verify-mode default("")
+      env: SMTP_OPENSSL_VERIFY_MODE
+    SMTP_ENABLE_STARTTLS_AUTO:
+      type: string
+      value: <- $smtp-enable-starttls-auto default("")
+      env: SMTP_ENABLE_STARTTLS_AUTO
+    SMTP_ENABLE_STARTTLS:
+      type: string
+      value: <- $smtp-enable-starttls default("")
+      env: SMTP_ENABLE_STARTTLS
+
+streaming:
+  defines: runnable
+  inherits: mastodon/common
+  containers:
+    streaming:
+      image: docker.io/bitnami/mastodon
+      image-tag: <- $IMAGE_TAG
+  connections:
+    redis:
+      runnable: mastodon/redis
+      service: redis-svc
+    postgres:
+      runnable: mastodon/postgres
+      service: postgres
+    web:
+      runnable: mastodon/web
+      service: server
+  depends:
+    wait-for:
+      runnables:
+        - mastodon/web
+  variables:
+    IMAGE_TAG:
+      type: string
+      value: <- $image-tag default("4")
+    ALLOW_EMPTY_PASSWORD:
+      type: string
+      value: 'yes'
+      env: ALLOW_EMPTY_PASSWORD
+    MASTODON_MODE:
+      type: string
+      value: streaming
+      env: MASTODON_MODE
+    REDIS_HOST:
+      type: string
+      value: <- connection-hostname("redis")
+      env: REDIS_HOST
+    DB_HOST:
+      type: string
+      value: <- connection-hostname("postgres")
+      env: MASTODON_DATABASE_HOST
+    DB_USER:
+      type: string
+      value: <- $db-user default("mastodon")
+      env: MASTODON_DATABASE_USERNAME
+    DB_PASS:
+      type: string
+      value: <- $db-pass default("mastodon")
+      env: MASTODON_DATABASE_PASSWORD
+    DB_NAME:
+      type: string
+      value: <- $db-name default("mastodon")
+      env: MASTODON_DATABASE_NAME
+    BITNAMI_DEBUG:
+      type: string
+      value: 'true'
+      env: BITNAMI_DEBUG
+    MASTODON_ELASTICSEARCH_ENABLED:
+      type: string
+      value: 'false'
+      env: MASTODON_ELASTICSEARCH_ENABLED
+    MASTODON_WEB_HOST:
+      type: string
+      value: <-connection-hostname("web")
+      env: MASTODON_WEB_HOST
+
+sidekiq:
+  defines: runnable
+  inherits: mastodon/common
+  containers:
+    sidekiq:
+      image: docker.io/bitnami/mastodon
+      image-tag: <- $IMAGE_TAG
+      paths:
+        - <- `${monk-volume-path}/mastodon/mastodon:/bitnami/mastodon`
+  connections:
+    redis:
+      runnable: mastodon/redis
+      service: redis-svc
+    postgres:
+      runnable: mastodon/postgres
+      service: postgres
+    web:
+      runnable: mastodon/web
+      service: server
+  depends:
+    wait-for:
+      runnables:
+        - mastodon/web
+  variables:
+    IMAGE_TAG:
+      type: string
+      value: <- $image-tag default("4")
+    ALLOW_EMPTY_PASSWORD:
+      type: string
+      value: 'yes'
+      env: ALLOW_EMPTY_PASSWORD
+    MASTODON_MODE:
+      type: string
+      value: sidekiq
+      env: MASTODON_MODE
+    REDIS_HOST:
+      type: string
+      value: <- connection-hostname("redis")
+      env: REDIS_HOST
+    DB_HOST:
+      type: string
+      value: <- connection-hostname("postgres")
+      env: MASTODON_DATABASE_HOST
+    DB_USER:
+      type: string
+      value: <- $db-user default("mastodon")
+      env: MASTODON_DATABASE_USERNAME
+    DB_PASS:
+      type: string
+      value: <- $db-pass default("mastodon")
+      env: MASTODON_DATABASE_PASSWORD
+    DB_NAME:
+      type: string
+      value: <- $db-name default("mastodon")
+      env: MASTODON_DATABASE_NAME
+    BITNAMI_DEBUG:
+      type: string
+      value: 'true'
+      env: BITNAMI_DEBUG
+    MASTODON_ELASTICSEARCH_ENABLED:
+      type: string
+      value: 'false'
+      env: MASTODON_ELASTICSEARCH_ENABLED
+    MASTODON_WEB_HOST:
+      type: string
+      value: <-connection-hostname("web")
+      env: MASTODON_WEB_HOST
+
+redis:
+  defines: runnable
+  inherits: redis/redis
+  metadata:
+    private: true
+  checks:
+    readiness:
+      code: exec("redis", "/bin/bash", "-c", "/opt/bitnami/redis/bin/redis-cli ping") contains?("PONG")
+      period: 1
+      initialDelay: 5
+  variables:
+    redis_instance_name:
+      value: monk-mastodon
+      type: string
+
+postgres:
+  defines: runnable
+  inherits: postgresql/base
+  metadata:
+    private: true
+  containers:
+    postgres:
+      image-tag: '16'
+      paths:
+        - <- `${monk-volume-path}/mastodon/postgresql:/var/lib/postgresql/data`
+  checks:
+    readiness:
+      code: exec("postgres", "pg_isready") contains?("accepting connections")
+      period: 5
+      initialDelay: 5
+  services:
+    postgres:
+      container: postgres
+      port: 5432
+      protocol: tcp
+  variables:
+    POSTGRES_DB:
+      type: string
+      value: <- $db-name default("mastodon")
+      env: POSTGRES_DB
+    POSTGRES_PASSWORD:
+      type: string
+      value: <- $db-user default("mastodon")
+      env: POSTGRES_PASSWORD
+    POSTGRES_USER:
+      type: string
+      value: <- $db-pass default("mastodon")
+      env: POSTGRES_USER
+
+runner-stack:
+  defines: process-group
+  runnable-list:
+    - mastodon/web
+    - mastodon/streaming
+    - mastodon/sidekiq
+    - mastodon/redis
+    - mastodon/postgres
+  variables:
+    image-tag:
+      type: string
+      value: '4'
+    db-name:
+      type: string
+      value: mastodon
+    db-user:
+      type: string
+      value: mastodon
+    db-pass:
+      type: string
+      value: mastodon
+    admin-username:
+      type: string
+      value: monk
+    admin-password:
+      type: string
+      value: monkmonk
+    admin-email:
+      type: string
+      value: monk@monk.io
+    web-domain:
+      type: string
+      value: mastodon.monk.io
+    local-domain:
+      type: string
+      value: mastodon.monk.io
+    smtp-server:
+      type: string
+      value:
+    smtp-port:
+      type: string
+      value:
+    smtp-login:
+      type: string
+      value:
+    smtp-password:
+      type: string
+      value:
+    smtp-from-address:
+      type: string
+      value:
+    smtp-domain:
+      type: string
+      value:
+    smtp-delivery-method:
+      type: string
+      value:
+    smtp-auth-method:
+      type: string
+      value:
+    smtp-ca-file:
+      type: string
+      value:
+    smtp-openssl-verify-mode:
+      type: string
+      value:
+    smtp-enable-starttls-auto:
+      type: string
+      value:
+    smtp-enable-starttls:
+      type: string
+      value:
+  metadata:
+    publisher: monk.io
+    tags: mastodon, socialnetwork, twitter, x, networking, community
+    icon: https://joinmastodon.org/_next/static/media/wordmark-white-text.01e9f493.svg
+    description: Social networking that's not for sale.
+    name: Mastodon
+    website: https://joinmastodon.org/
+    source: https://github.com/mastodon/mastodon
+    version: 1.0
