@@ -345,7 +345,7 @@ postgres:
       value: <- $db-pass default("mastodon")
       env: POSTGRES_USER
 
-runner-stack:
+mastodon:
   defines: process-group
   runnable-list:
     - mastodon/web
