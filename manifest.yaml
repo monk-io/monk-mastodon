@@ -60,7 +60,7 @@ web:
   variables:
     IMAGE_TAG:
       type: string
-      value: <- $image-tag default("4")
+      value: <- $image-tag default("latest")
     ALLOW_EMPTY_PASSWORD:
       type: string
       value: 'yes'
@@ -186,7 +186,7 @@ streaming:
   variables:
     IMAGE_TAG:
       type: string
-      value: <- $image-tag default("4")
+      value: <- $image-tag default("latest")
     ALLOW_EMPTY_PASSWORD:
       type: string
       value: 'yes'
@@ -254,7 +254,7 @@ sidekiq:
   variables:
     IMAGE_TAG:
       type: string
-      value: <- $image-tag default("4")
+      value: <- $image-tag default("latest")
     ALLOW_EMPTY_PASSWORD:
       type: string
       value: 'yes'
@@ -318,7 +318,7 @@ postgres:
     private: true
   containers:
     postgres:
-      image-tag: '16'
+      image-tag: 'latest'
       paths:
         - <- `${monk-volume-path}/mastodon/postgresql:/var/lib/postgresql/data`
   checks:
@@ -356,7 +356,7 @@ mastodon:
   variables:
     image-tag:
       type: string
-      value: '4'
+      value: 'latest'
     db-name:
       type: string
       value: mastodon
