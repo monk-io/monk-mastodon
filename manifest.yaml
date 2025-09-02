@@ -17,7 +17,7 @@ web:
   inherits: mastodon/common
   containers:
     web:
-      image: docker.io/bitnami/mastodon
+      image: docker.io/bitnamilegacy/mastodon
       image-tag: <- $IMAGE_TAG
       paths:
         - <- `${monk-volume-path}/mastodon/mastodon:/bitnami/mastodon`
@@ -167,7 +167,7 @@ streaming:
   inherits: mastodon/common
   containers:
     streaming:
-      image: docker.io/bitnami/mastodon
+      image: docker.io/bitnamilegacy/mastodon
       image-tag: <- $IMAGE_TAG
   connections:
     redis:
@@ -233,7 +233,7 @@ sidekiq:
   inherits: mastodon/common
   containers:
     sidekiq:
-      image: docker.io/bitnami/mastodon
+      image: docker.io/bitnamilegacy/mastodon
       image-tag: <- $IMAGE_TAG
       paths:
         - <- `${monk-volume-path}/mastodon/mastodon:/bitnami/mastodon`
