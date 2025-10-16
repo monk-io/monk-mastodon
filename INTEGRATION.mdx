@@ -1,0 +1,212 @@
+---
+title: Mastodon
+description: Ready-to-run Mastodon container template you can run directly or inherit to integrate a decentralized social network into your infrastructure.
+primary_category: social
+tags: [mastodon, social-network, activitypub, template, runnable, decentralized, fediverse]
+integration_type: template
+hosting_models: [self-hosted]
+website_url: https://joinmastodon.org/
+docs_url: https://docs.joinmastodon.org/
+publisher: monk.io
+---
+
+## Overview
+
+This template provides a production‑ready Mastodon instance as a Monk runnable. You can:
+
+- Run it directly to host your own decentralized social network instance
+- Inherit it in your own runnable to seamlessly add Mastodon to your community infrastructure
+
+Mastodon is free, open-source, decentralized social network software. It's part of the Fediverse, allowing users on different servers to interact. Think of it as self-hosted Twitter/X with no central authority.
+
+## What this template manages
+
+- Mastodon web application (port 3000)
+- Mastodon streaming server (port 4000)
+- Sidekiq background workers
+- PostgreSQL database for data persistence
+- Redis for caching and job queues
+- Persistent volumes for media and database
+- Optional Elasticsearch for full-text search
+
+## Quick start (run directly)
+
+1) Load templates
+
+```bash
+monk load MANIFEST
+```
+
+2) Run Mastodon stack
+
+```bash
+monk run mastodon/stack
+```
+
+3) Create admin user
+
+```bash
+docker exec -it mastodon-web \
+  bin/tootctl accounts create admin \
+  --email admin@example.com \
+  --confirmed --role Owner
+```
+
+4) Customize credentials (recommended via inheritance)
+
+Running directly uses the defaults defined in this template's `variables`. Secrets added with `monk secrets add` will not affect this runnable unless you inherit it and reference those secrets.
+
+- Preferred: inherit and replace variables with `secret("...")` as shown below.
+- Alternative: fork/clone and edit the `variables` in `mastodon/stack.yaml`, then `monk load MANIFEST` and run.
+
+Once started, access Mastodon at `http://localhost:3000` (or the runnable hostname inside Monk networks).
+
+## Configuration
+
+Key variables you can customize in this template:
+
+```yaml
+variables:
+  mastodon-image-tag: "latest"              # container image tag
+  web-port: "3000"                          # web UI port
+  streaming-port: "4000"                    # streaming API port
+  local-domain: "mastodon.example.com"      # your domain (required for federation)
+  
+  # Secrets (generate with rake secret)
+  secret-key-base: "..."                    # Rails secret (env: SECRET_KEY_BASE)
+  otp-secret: "..."                         # OTP secret (env: OTP_SECRET)
+  vapid-private-key: "..."                  # VAPID private key
+  vapid-public-key: "..."                   # VAPID public key
+  
+  # Database
+  postgres-password: "..."                  # PostgreSQL password
+  db-name: "mastodon"                       # database name
+  db-user: "mastodon"                       # database user
+  
+  # Redis
+  redis-password: "..."                     # Redis password
+  
+  # Email (required for production)
+  smtp-server: "smtp.example.com"           # SMTP server
+  smtp-login: "user@example.com"            # SMTP username
+  smtp-password: "..."                      # SMTP password
+  smtp-from: "notifications@example.com"    # sender address
+```
+
+Data is persisted under `${monk-volume-path}/mastodon`, `${monk-volume-path}/postgres`, and `${monk-volume-path}/redis` on the host.
+
+## Use by inheritance (recommended for communities)
+
+Inherit the Mastodon runnable in your community infrastructure. Example:
+
+```yaml
+namespace: mycommunity
+social:
+  defines: runnable
+  inherits: mastodon/stack
+  variables:
+    local-domain: "social.mycommunity.org"
+    secret-key-base: <- secret("mastodon-secret-key")
+    otp-secret: <- secret("mastodon-otp-secret")
+    vapid-private-key: <- secret("mastodon-vapid-private")
+    vapid-public-key: <- secret("mastodon-vapid-public")
+    postgres-password: <- secret("postgres-password")
+    redis-password: <- secret("redis-password")
+    smtp-server: <- secret("smtp-server")
+    smtp-login: <- secret("smtp-login")
+    smtp-password: <- secret("smtp-password")
+```
+
+Generate required secrets:
+
+```bash
+# Generate Rails secrets
+docker run --rm -it tootsuite/mastodon:latest bundle exec rake secret
+
+# Generate VAPID keys
+docker run --rm -it tootsuite/mastodon:latest bundle exec rake mastodon:webpush:generate_vapid_key
+```
+
+Then set the secrets once and run your community stack:
+
+```bash
+monk secrets add -g mastodon-secret-key="<generated-secret>"
+monk secrets add -g mastodon-otp-secret="<generated-otp>"
+monk secrets add -g mastodon-vapid-private="<generated-vapid-private>"
+monk secrets add -g mastodon-vapid-public="<generated-vapid-public>"
+monk secrets add -g postgres-password="STRONG_PASSWORD"
+monk secrets add -g redis-password="STRONG_PASSWORD"
+monk secrets add -g smtp-server="smtp.example.com"
+monk secrets add -g smtp-login="notifications@example.com"
+monk secrets add -g smtp-password="SMTP_PASSWORD"
+monk run mycommunity/social
+```
+
+## Ports and connectivity
+
+- Service: `web` on TCP port `3000` (Web UI)
+- Service: `streaming` on TCP port `4000` (Streaming API)
+- For federation, requires public domain with HTTPS configured
+- From other runnables in the same process group, use `connection-hostname("<connection-name>")` to resolve services.
+
+## Persistence and configuration
+
+- Media files: `${monk-volume-path}/mastodon/public:/mastodon/public`
+- PostgreSQL data: `${monk-volume-path}/postgres:/var/lib/postgresql/data`
+- Redis data: `${monk-volume-path}/redis:/data`
+- Ensure the host volumes are writable by the container user.
+
+## Production requirements
+
+For production deployment:
+- **Domain**: Registered domain with DNS pointing to your server
+- **HTTPS**: SSL/TLS certificate (Let's Encrypt recommended)
+- **Email**: SMTP server for notifications and confirmations
+- **Object Storage**: S3-compatible storage for media (recommended for scalability)
+- **CDN**: Content delivery network for media (optional but recommended)
+- **Backups**: Regular database and media backups
+
+## Related templates
+
+- High‑availability setup: see the `mastodon-ha/` template in this repository for a clustered deployment.
+- Combine with monitoring tools (`prometheus-grafana/`) for observability.
+
+## Troubleshooting
+
+- If you changed secrets but the container has existing data, you may need to regenerate them or update the database.
+- Ensure the host volumes are writable by the container user.
+- Check logs:
+
+```bash
+monk logs -l 500 -f mastodon/web
+monk logs -l 500 -f mastodon/sidekiq
+monk logs -l 500 -f mastodon/streaming
+```
+
+- For federation issues:
+  - Verify domain is publicly accessible with HTTPS
+  - Test ActivityPub endpoint: `https://yourdomain/.well-known/webfinger`
+- For email issues, verify SMTP configuration in admin panel
+- For slow performance, scale Sidekiq workers or optimize PostgreSQL
+- Run database migrations if needed:
+
+```bash
+docker exec -it mastodon-web bin/rails db:migrate
+```
+
+- Common administration tasks:
+
+```bash
+# Create user
+docker exec -it mastodon-web \
+  bin/tootctl accounts create username \
+  --email user@example.com --confirmed
+
+# Make admin
+docker exec -it mastodon-web \
+  bin/tootctl accounts modify username --role Admin
+
+# Clean old media
+docker exec -it mastodon-web \
+  bin/tootctl media remove --days=7
+```
