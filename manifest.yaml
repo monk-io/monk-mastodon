@@ -57,6 +57,9 @@ web:
       code: exec("web", "/bin/bash", "-c", "/opt/bitnami/scripts/ready.sh") contains?("ok")
       period: 5
       initialDelay: 15
+    liveness:
+      code: exec("web", "/bin/bash", "-c", "/opt/bitnami/scripts/ready.sh") contains?("ok")
+      period: 60
   variables:
     IMAGE_TAG:
       type: string
@@ -306,6 +309,9 @@ redis:
       code: exec("redis", "/bin/bash", "-c", "/opt/bitnami/redis/bin/redis-cli ping") contains?("PONG")
       period: 1
       initialDelay: 5
+    liveness:
+      code: exec("redis", "/bin/bash", "-c", "/opt/bitnami/redis/bin/redis-cli ping") contains?("PONG")
+      period: 60
   variables:
     redis_instance_name:
       value: monk-mastodon
@@ -326,6 +332,9 @@ postgres:
       code: exec("postgres", "pg_isready") contains?("accepting connections")
       period: 5
       initialDelay: 5
+    liveness:
+      code: exec("postgres", "pg_isready") contains?("accepting connections")
+      period: 60
   services:
     postgres:
       container: postgres
